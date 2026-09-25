@@ -19,9 +19,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -41,6 +42,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+UART_HandleTypeDef huart1;
+
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
@@ -49,8 +52,8 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
-TaskHandle_t vTaskLed =NULL;
-TaskHandle_t vTaskUart =NULL;
+TaskHandle_t xTaskLed =NULL;
+TaskHandle_t xTaskUart =NULL;
 #define LED_Priority ( tskIDLE_PRIORITY +2 )
 #define UART_Priority ( tskIDLE_PRIORITY +1 )
 /* USER CODE END PV */
@@ -58,10 +61,12 @@ TaskHandle_t vTaskUart =NULL;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-
+void vTaskLed(void * pvParameter);
+void vTaskUart(void *pvParameter);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -98,26 +103,26 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   xTaskCreate(
-    vLEDTask,
-    "Task Led",
-    128,
-    NULL,
-    LED_Priority,
-    &vTaskLed
-  );
+  vTaskLed,
+  "Task Led",
+  128,
+  NULL,
+  LED_Priority,
+  &xTaskLed
+ );
 
-  xTaskCreate(
-    vUartTask,
-    "Task uart",
-    128,
-    NULL,
-    UART_Priority,
-    &vTaskUart
-  );
+ xTaskCreate(
+  vTaskUart,
+  "Task Uart",
+  128,
+  NULL,
+  UART_Priority,
+  &xTaskUart
+ );
 
-  
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -133,7 +138,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_ TIMERS */
+  /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -204,6 +209,39 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -218,6 +256,7 @@ static void MX_GPIO_Init(void)
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
@@ -229,17 +268,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA9 */
+  /*Configure GPIO pin : PB9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : PA10 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   __HAL_RCC_USART1_CLK_ENABLE();
@@ -247,18 +280,50 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void vLEDTask ( void *pvParameter){
+void vTaskLed(void * pvParameter){
   for (;;){
-    HAL_GPIO_TogglePin( GPIOC ,GPIO_PIN_13);
-    vTaskDelay(pdMS_TO_TICKS( 500 ));
+    HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_13);
+    vTaskDelay( pdMS_TO_TICKS(1000));
   }
 }
 
-void vUartTask( void *pvParameter){
-  const char *tam= "HIMASS_AND_TRANVU";
-  for(;;){
-    HAL_UART_Transmit(&huart1, (uint8_t*)tam, strlen(tam), HAL_MAX_DELAY);
-    vTaskDelay( pdMS_TO_TICKS( 1000 ) );
+void vTaskUart( void *pvParameter){
+  uint32_t count=0;
+  char uart_buff[50];
+  typedef enum{
+    idle,
+    debounce,
+    wait
+  }button_t;
+
+  button_t nut =idle;
+  uint32_t tick = HAL_GetTick();
+  for (;;){
+  
+  switch(nut){
+    case idle:
+      if (HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_9)==0){
+        tick = HAL_GetTick();
+        nut= debounce;
+      }break;
+
+      case debounce:
+      if (HAL_GetTick()-tick >= 30){
+        if (HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_9)==0){
+          count++;
+          int len =sprintf(uart_buff, "So lan nhan: %lu\r\n", count);
+          HAL_UART_Transmit(&huart1, (uint8_t *)uart_buff,len,HAL_MAX_DELAY);
+          nut = wait;
+        }else{nut=idle;
+            }
+      }break;
+      
+      case wait:
+      if (HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_9)==1){
+        nut=idle;
+      }break;
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 /* USER CODE END 4 */

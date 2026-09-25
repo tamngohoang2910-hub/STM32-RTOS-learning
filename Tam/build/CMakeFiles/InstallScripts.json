@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"D:/RTOS STM32/Tam/build/cmake_install.cmake",
+		"D:/RTOS STM32/Tam/build/cmake/stm32cubemx/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
